@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบจัดการคิว</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&family=Kanit:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #6C3FC5;
+    --primary-light: #9B6FE0;
+    --primary-dark: #4A2A8F;
+    --accent: #FF6B35;
+    --bg: #0F0A1E;
+    --bg2: #1A1130;
+    --bg3: #241848;
+    --card: #1E1535;
+    --card2: #2A1F4A;
+    --text: #F0EAF8;
+    --text2: #A89BC2;
+    --border: #3D2F6B;
+    --success: #4CAF82;
+    --warning: #FFB347;
+    --danger: #FF5E7A;
+    --info: #5BC8F5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  /* BG decoration */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(108,63,197,0.15) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; left: -200px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(255,107,53,0.08) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(135deg, var(--bg2), var(--bg3));
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    position: sticky; top: 0; z-index: 100;
+    backdrop-filter: blur(10px);
+  }
+  .header-inner {
+    max-width: 900px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .shop-info { display: flex; align-items: center; gap: 12px; }
+  .shop-logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .shop-name { font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
+  .shop-sub { font-size: 11px; color: var(--text2); }
+  .mode-toggle {
+    display: flex; gap: 4px;
+    background: var(--bg); border-radius: 10px; padding: 4px;
+  }
+  .mode-btn {
+    padding: 6px 14px; border-radius: 7px; border: none;
+    font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    background: transparent; color: var(--text2);
+  }
+  .mode-btn.active {
+    background: var(--primary); color: white;
+    box-shadow: 0 2px 8px rgba(108,63,197,0.4);
+  }
+
+  /* MAIN */
+  .main { max-width: 900px; margin: 0 auto; padding: 20px; position: relative; z-index: 1; }
+
+  /* TODAY BANNER */
+  .today-banner {
+    background: linear-gradient(135deg, var(--primary-dark), var(--bg3));
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .today-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .today-date { font-family: 'Kanit', sans-serif; font-size: 18px; font-weight: 600; }
+  .today-stats { display: flex; gap: 16px; }
+  .stat-item { text-align: center; }
+  .stat-num { font-family: 'Kanit', sans-serif; font-size: 22px; font-weight: 700; color: var(--primary-light); }
+  .stat-label { font-size: 10px; color: var(--text2); }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text2);
+    font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .tab-btn.active {
+    background: var(--primary); border-color: var(--primary); color: white;
+    box-shadow: 0 2px 10px rgba(108,63,197,0.3);
+  }
+
+  /* LOADING */
+  .loading {
+    text-align: center; padding: 60px 20px; color: var(--text2);
+  }
+  .spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* QUEUE LIST */
+  .queue-list { display: flex; flex-direction: column; gap: 10px; }
+  .queue-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+    transition: all 0.2s; cursor: pointer;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .queue-card:hover { border-color: var(--primary); background: var(--card2); }
+  .queue-row1 { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .queue-name { font-family: 'Kanit', sans-serif; font-size: 15px; font-weight: 600; }
+  .queue-date-tag {
+    font-size: 11px; padding: 3px 8px; border-radius: 6px;
+    background: var(--bg3); color: var(--text2);
+  }
+  .queue-row2 { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .queue-type {
+    font-size: 12px; padding: 3px 10px; border-radius: 6px;
+    background: rgba(108,63,197,0.2); color: var(--primary-light);
+  }
+  .queue-phone { font-size: 12px; color: var(--text2); }
+  .queue-row3 { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .queue-price { font-family: 'Kanit', sans-serif; font-size: 14px; color: var(--accent); }
+  .status-badge {
+    font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px;
+  }
+  .status-badge.รอดำเนินการ { background: rgba(255,179,71,0.15); color: var(--warning); }
+  .status-badge.กำลังทำ { background: rgba(91,200,245,0.15); color: var(--info); }
+  .status-badge.เสร็จแล้ว { background: rgba(76,175,130,0.15); color: var(--success); }
+  .status-badge.รับงานแล้ว { background: rgba(255,94,122,0.15); color: var(--danger); }
+
+  /* CALENDAR */
+  .calendar-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid var(--border);
+  }
+  .cal-title { font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 600; }
+  .cal-nav {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+    font-size: 16px; display: flex; align-items: center; justify-content: center;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 1px; background: var(--border);
+  }
+  .cal-day-name {
+    background: var(--bg3); text-align: center;
+    font-size: 11px; color: var(--text2); padding: 8px 4px; font-weight: 600;
+  }
+  .cal-day {
+    background: var(--card); min-height: 60px; padding: 6px;
+    cursor: pointer; transition: background 0.15s; position: relative;
+  }
+  .cal-day:hover { background: var(--card2); }
+  .cal-day.today { background: rgba(108,63,197,0.15); }
+  .cal-day.today .day-num { color: var(--primary-light); font-weight: 700; }
+  .cal-day.other-month { opacity: 0.3; }
+  .day-num { font-size: 13px; margin-bottom: 4px; }
+  .day-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent); margin: 1px 0;
+  }
+  .day-count {
+    font-size: 10px; color: var(--accent);
+    background: rgba(255,107,53,0.15); border-radius: 4px;
+    padding: 1px 4px; display: inline-block;
+  }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 50px 20px; color: var(--text2); }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
+
+  /* ADMIN FORM */
+  .add-btn {
+    width: 100%; padding: 14px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border: none; color: white; font-family: 'Kanit', sans-serif;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    margin-bottom: 20px; transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(108,63,197,0.3);
+  }
+  .add-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(108,63,197,0.4); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 200; display: flex; align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--bg2); border-radius: 20px 20px 0 0;
+    padding: 20px; width: 100%; max-height: 90vh; overflow-y: auto;
+    border-top: 1px solid var(--border);
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-title {
+    font-family: 'Kanit', sans-serif; font-size: 18px; font-weight: 600;
+    margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .close-btn {
+    background: var(--bg3); border: none; color: var(--text2);
+    width: 30px; height: 30px; border-radius: 8px; cursor: pointer; font-size: 16px;
+  }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; display: block; font-weight: 600; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%; padding: 10px 14px; border-radius: 10px;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Sarabun', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--primary); }
+  .form-textarea { resize: vertical; min-height: 70px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .submit-btn {
+    width: 100%; padding: 13px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border: none; color: white; font-family: 'Kanit', sans-serif;
+    font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px;
+  }
+  .status-select-row {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px;
+  }
+  .status-option {
+    padding: 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--bg3); color: var(--text2); text-align: center;
+    font-size: 12px; cursor: pointer; transition: all 0.15s;
+  }
+  .status-option.selected { border-color: var(--primary); color: white; background: rgba(108,63,197,0.2); }
+
+  /* DETAIL MODAL */
+  .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .detail-label { font-size: 12px; color: var(--text2); }
+  .detail-val { font-size: 13px; font-weight: 500; text-align: right; max-width: 60%; }
+
+  /* THEME PICKER */
+  .theme-row { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .theme-dot {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    border: 3px solid transparent; transition: all 0.2s;
+  }
+  .theme-dot.active { border-color: white; transform: scale(1.15); }
+
+  /* Refresh btn */
+  .refresh-btn {
+    background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+    padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; transition: all 0.2s;
+  }
+  .refresh-btn:hover { border-color: var(--primary); color: var(--primary-light); }
+
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+  }
+  .section-title { font-family: 'Kanit', sans-serif; font-size: 15px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div class="shop-info">
+      <div class="shop-logo">🎨</div>
+      <div>
+        <div class="shop-name">ร้านป้าย & โลโก้</div>
+        <div class="shop-sub">ระบบจัดการคิว</div>
+      </div>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" onclick="setMode('customer')">👁 ลูกค้า</button>
+      <button class="mode-btn" onclick="setMode('admin')">⚙️ แอดมิน</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TODAY BANNER -->
+  <div class="today-banner">
+    <div>
+      <div class="today-label">วันนี้</div>
+      <div class="today-date" id="todayDate">-</div>
+    </div>
+    <div class="today-stats">
+      <div class="stat-item">
+        <div class="stat-num" id="statTotal">0</div>
+        <div class="stat-label">งานทั้งหมด</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="statPending">0</div>
+        <div class="stat-label">รอดำเนินการ</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num" id="statDone">0</div>
+        <div class="stat-label">เสร็จแล้ว</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="setTab('today')">📋 วันนี้</button>
+    <button class="tab-btn" onclick="setTab('all')">📦 ทั้งหมด</button>
+    <button class="tab-btn" onclick="setTab('calendar')">📅 ปฏิทิน</button>
+    <button class="tab-btn" onclick="setTab('inprogress')">⚡ กำลังทำ</button>
+    <button class="tab-btn" onclick="setTab('done')">✅ เสร็จแล้ว</button>
+  </div>
+
+  <!-- ADMIN ADD BTN -->
+  <button class="add-btn hidden" id="addBtn" onclick="openAddModal()">+ เพิ่มงานใหม่</button>
+
+  <!-- CONTENT -->
+  <div id="content">
+    <div class="loading"><div class="spinner"></div>กำลังโหลดข้อมูล...</div>
+  </div>
+
+</div>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-overlay hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modalTitle">เพิ่มงานใหม่</span>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">วันที่รับงาน *</label>
+      <input class="form-input" type="date" id="f_date">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ชื่อลูกค้า *</label>
+        <input class="form-input" type="text" id="f_name" placeholder="ชื่อ-นามสกุล">
+      </div>
+      <div class="form-group">
+        <label class="form-label">เบอร์โทร</label>
+        <input class="form-input" type="tel" id="f_phone" placeholder="08x-xxx-xxxx">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ประเภทงาน</label>
+      <select class="form-select" id="f_type">
+        <option>ป้ายไวนิล</option>
+        <option>ป้ายอะคริลิค</option>
+        <option>ป้ายโฟมบอร์ด</option>
+        <option>โลโก้</option>
+        <option>สติ๊กเกอร์</option>
+        <option>นามบัตร</option>
+        <option>อื่นๆ</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">รายละเอียด</label>
+      <textarea class="form-textarea" id="f_detail" placeholder="รายละเอียดงาน ขนาด สี ฯลฯ"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">ราคา (บาท)</label>
+        <input class="form-input" type="number" id="f_price" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">มัดจำ (บาท)</label>
+        <input class="form-input" type="number" id="f_deposit" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">สถานะ</label>
+      <div class="status-select-row">
+        <div class="status-option selected" onclick="selectStatus(this,'รอดำเนินการ')">⏳ รอดำเนินการ</div>
+        <div class="status-option" onclick="selectStatus(this,'กำลังทำ')">⚡ กำลังทำ</div>
+        <div class="status-option" onclick="selectStatus(this,'เสร็จแล้ว')">✅ เสร็จแล้ว</div>
+        <div class="status-option" onclick="selectStatus(this,'รับงานแล้ว')">📦 รับงานแล้ว</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">หมายเหตุ</label>
+      <input class="form-input" type="text" id="f_note" placeholder="หมายเหตุเพิ่มเติม">
+    </div>
+    <button class="submit-btn" onclick="submitForm()">💾 บันทึก</button>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay hidden" id="detailModal">
+  <div class="modal">
+    <div class="modal-title">
+      <span>รายละเอียดงาน</span>
+      <button class="close-btn" onclick="closeDetailModal()">✕</button>
+    </div>
+    <div id="detailContent"></div>
+    <div id="adminDetailActions" class="hidden" style="margin-top:14px; display:flex; gap:8px;">
+      <button onclick="editFromDetail()" style="flex:1; padding:11px; border-radius:10px; background:var(--bg3); border:1px solid var(--border); color:var(--text); font-family:Sarabun,sans-serif; cursor:pointer;">✏️ แก้ไข</button>
+      <button onclick="deleteFromDetail()" style="flex:1; padding:11px; border-radius:10px; background:rgba(255,94,122,0.1); border:1px solid var(--danger); color:var(--danger); font-family:Sarabun,sans-serif; cursor:pointer;">🗑 ลบ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const SHEET_ID = '1MwZcqeA5t4Y3EsUJTJlzOkgV3QrEV9jWNw-jON9ITJI';
+const API_KEY = 'AIzaSyALG-0RLwTtqlrbfm3eFbQTcsoUx4MYMws';
+const SHEET_NAME = 'ชีต1';
+
+// ===== STATE =====
+let mode = 'customer';
+let currentTab = 'today';
+let allData = [];
+let selectedStatus = 'รอดำเนินการ';
+let editingRow = null;
+let detailData = null;
+let calYear, calMonth;
+
+// ===== INIT =====
+window.onload = () => {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  document.getElementById('todayDate').textContent = now.toLocaleDateString('th-TH', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  document.getElementById('f_date').value = now.toISOString().split('T')[0];
+  loadData();
+};
+
+// ===== LOAD DATA =====
+async function loadData() {
+  showLoading();
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}?key=${API_KEY}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    const rows = json.values || [];
+    allData = rows.slice(1).map((r, i) => ({
+      row: i + 2,
+      date: r[0] || '',
+      name: r[1] || '',
+      phone: r[2] || '',
+      type: r[3] || '',
+      detail: r[4] || '',
+      price: r[5] || '',
+      deposit: r[6] || '',
+      status: r[7] || 'รอดำเนินการ',
+      note: r[8] || ''
+    }));
+    updateStats();
+    renderContent();
+  } catch(e) {
+    document.getElementById('content').innerHTML = `<div class="empty"><div class="empty-icon">⚠️</div><div>โหลดข้อมูลไม่สำเร็จ<br><small style="color:var(--text2)">${e.message}</small></div></div>`;
+  }
+}
+
+function showLoading() {
+  document.getElementById('content').innerHTML = '<div class="loading"><div class="spinner"></div>กำลังโหลด...</div>';
+}
+
+// ===== STATS =====
+function updateStats() {
+  const today = todayStr();
+  const todayData = allData.filter(d => d.date === today);
+  document.getElementById('statTotal').textContent = todayData.length;
+  document.getElementById('statPending').textContent = todayData.filter(d => d.status === 'รอดำเนินการ').length;
+  document.getElementById('statDone').textContent = todayData.filter(d => d.status === 'เสร็จแล้ว').length;
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+// ===== MODE =====
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&m==='customer')||(i===1&&m==='admin')));
+  document.getElementById('addBtn').classList.toggle('hidden', m !== 'admin');
+  renderContent();
+}
+
+// ===== TABS =====
+function setTab(t) {
+  currentTab = t;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderContent();
+}
+
+// ===== RENDER =====
+function renderContent() {
+  if (currentTab === 'calendar') { renderCalendar(); return; }
+  let data = [];
+  const today = todayStr();
+  if (currentTab === 'today') data = allData.filter(d => d.date === today);
+  else if (currentTab === 'all') data = [...allData];
+  else if (currentTab === 'inprogress') data = allData.filter(d => d.status === 'กำลังทำ');
+  else if (currentTab === 'done') data = allData.filter(d => d.status === 'เสร็จแล้ว');
+
+  data.sort((a,b) => b.date.localeCompare(a.date));
+
+  const label = {today:'วันนี้', all:'งานทั้งหมด', inprogress:'กำลังทำ', done:'เสร็จแล้ว'}[currentTab];
+
+  if (!data.length) {
+    document.getElementById('content').innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div>ไม่มีข้อมูล ${label}</div></div>`;
+    return;
+  }
+
+  let html = `<div class="section-header"><div class="section-title">${label} (${data.length} รายการ)</div><button class="refresh-btn" onclick="loadData()">🔄 รีเฟรช</button></div><div class="queue-list">`;
+  data.forEach(d => {
+    html += `<div class="queue-card" onclick="openDetail(${d.row})">
+      <div class="queue-row1">
+        <div class="queue-name">${d.name || '-'}</div>
+        <div class="queue-date-tag">${formatDate(d.date)}</div>
+      </div>
+      <div class="queue-row2">
+        <div class="queue-type">${d.type || '-'}</div>
+        ${d.phone ? `<div class="queue-phone">📞 ${d.phone}</div>` : ''}
+      </div>
+      <div class="queue-row3">
+        <div class="queue-price">${d.price ? '฿'+Number(d.price).toLocaleString() : '-'}</div>
+        <div class="status-badge ${d.status}">${statusIcon(d.status)} ${d.status}</div>
+      </div>
+      ${d.detail ? `<div style="font-size:12px;color:var(--text2);margin-top:6px">${d.detail}</div>` : ''}
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+function statusIcon(s) {
+  return {รอดำเนินการ:'⏳', กำลังทำ:'⚡', เสร็จแล้ว:'✅', รับงานแล้ว:'📦'}[s] || '';
+}
+
+function formatDate(str) {
+  if (!str) return '-';
+  const d = new Date(str);
+  return d.toLocaleDateString('th-TH', {day:'numeric', month:'short'});
+}
+
+// ===== CALENDAR =====
+function renderCalendar() {
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth+1, 0);
+  const monthName = firstDay.toLocaleDateString('th-TH', {month:'long', year:'numeric'});
+
+  // Count per date
+  const counts = {};
+  allData.forEach(d => { counts[d.date] = (counts[d.date]||0) + 1; });
+
+  let html = `<div class="calendar-wrap">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">◀</button>
+      <div class="cal-title">${monthName}</div>
+      <button class="cal-nav" onclick="calNext()">▶</button>
+    </div>
+    <div class="cal-grid">
+      <div class="cal-day-name">อา</div><div class="cal-day-name">จ</div>
+      <div class="cal-day-name">อ</div><div class="cal-day-name">พ</div>
+      <div class="cal-day-name">พฤ</div><div class="cal-day-name">ศ</div>
+      <div class="cal-day-name">ส</div>`;
+
+  const startPad = firstDay.getDay();
+  const prevLast = new Date(calYear, calMonth, 0).getDate();
+  for (let i = startPad-1; i >= 0; i--) {
+    html += `<div class="cal-day other-month"><div class="day-num">${prevLast-i}</div></div>`;
+  }
+
+  const today = new Date();
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = today.getFullYear()===calYear && today.getMonth()===calMonth && today.getDate()===d;
+    const cnt = counts[dateStr] || 0;
+    html += `<div class="cal-day ${isToday?'today':''}" onclick="calDayClick('${dateStr}')">
+      <div class="day-num">${d}</div>
+      ${cnt ? `<div class="day-count">${cnt}</div>` : ''}
+    </div>`;
+  }
+
+  const totalCells = startPad + lastDay.getDate();
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="cal-day other-month"><div class="day-num">${i}</div></div>`;
+  }
+
+  html += '</div></div>';
+  document.getElementById('content').innerHTML = html;
+}
+
+function calPrev() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNext() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function calDayClick(dateStr) {
+  const data = allData.filter(d => d.date === dateStr);
+  if (!data.length) return;
+  let html = `<div style="margin-bottom:12px;font-family:Kanit,sans-serif;font-size:15px">${formatDate(dateStr)} — ${data.length} รายการ</div><div class="queue-list">`;
+  data.forEach(d => {
+    html += `<div class="queue-card" onclick="openDetail(${d.row})">
+      <div class="queue-row1"><div class="queue-name">${d.name}</div><div class="status-badge ${d.status}">${statusIcon(d.status)} ${d.status}</div></div>
+      <div class="queue-row2"><div class="queue-type">${d.type}</div></div>
+    </div>`;
+  });
+  html += '</div>';
+  document.getElementById('detailContent').innerHTML = html;
+  document.getElementById('adminDetailActions').style.display = 'none';
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+
+// ===== DETAIL =====
+function openDetail(row) {
+  detailData = allData.find(d => d.row === row);
+  if (!detailData) return;
+  document.getElementById('detailContent').innerHTML = `
+    <div class="detail-row"><span class="detail-label">ชื่อลูกค้า</span><span class="detail-val">${detailData.name}</span></div>
+    <div class="detail-row"><span class="detail-label">เบอร์โทร</span><span class="detail-val">${detailData.phone||'-'}</span></div>
+    <div class="detail-row"><span class="detail-label">วันที่</span><span class="detail-val">${formatDate(detailData.date)}</span></div>
+    <div class="detail-row"><span class="detail-label">ประเภทงาน</span><span class="detail-val">${detailData.type||'-'}</span></div>
+    <div class="detail-row"><span class="detail-label">รายละเอียด</span><span class="detail-val">${detailData.detail||'-'}</span></div>
+    <div class="detail-row"><span class="detail-label">ราคา</span><span class="detail-val" style="color:var(--accent)">${detailData.price ? '฿'+Number(detailData.price).toLocaleString() : '-'}</span></div>
+    <div class="detail-row"><span class="detail-label">มัดจำ</span><span class="detail-val">${detailData.deposit ? '฿'+Number(detailData.deposit).toLocaleString() : '-'}</span></div>
+    <div class="detail-row"><span class="detail-label">สถานะ</span><span class="detail-val"><span class="status-badge ${detailData.status}">${statusIcon(detailData.status)} ${detailData.status}</span></span></div>
+    <div class="detail-row" style="border:none"><span class="detail-label">หมายเหตุ</span><span class="detail-val">${detailData.note||'-'}</span></div>
+  `;
+  const adminActions = document.getElementById('adminDetailActions');
+  adminActions.style.display = mode === 'admin' ? 'flex' : 'none';
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+// ===== ADD MODAL =====
+function openAddModal() {
+  editingRow = null;
+  document.getElementById('modalTitle').textContent = 'เพิ่มงานใหม่';
+  document.getElementById('f_date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('f_name').value = '';
+  document.getElementById('f_phone').value = '';
+  document.getElementById('f_type').value = 'ป้ายไวนิล';
+  document.getElementById('f_detail').value = '';
+  document.getElementById('f_price').value = '';
+  document.getElementById('f_deposit').value = '';
+  document.getElementById('f_note').value = '';
+  selectedStatus = 'รอดำเนินการ';
+  document.querySelectorAll('.status-option').forEach((o,i) => o.classList.toggle('selected', i===0));
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function editFromDetail() {
+  closeDetailModal();
+  if (!detailData) return;
+  editingRow = detailData.row;
+  document.getElementById('modalTitle').textContent = 'แก้ไขงาน';
+  document.getElementById('f_date').value = detailData.date;
+  document.getElementById('f_name').value = detailData.name;
+  document.getElementById('f_phone').value = detailData.phone;
+  document.getElementById('f_type').value = detailData.type;
+  document.getElementById('f_detail').value = detailData.detail;
+  document.getElementById('f_price').value = detailData.price;
+  document.getElementById('f_deposit').value = detailData.deposit;
+  document.getElementById('f_note').value = detailData.note;
+  selectedStatus = detailData.status;
+  document.querySelectorAll('.status-option').forEach(o => {
+    const s = o.textContent.trim().replace(/^[^\s]+ /,'');
+    o.classList.toggle('selected', detailData.status === s.trim() || o.textContent.includes(detailData.status));
+  });
+  document.getElementById('addModal').classList.remove('hidden');
+}
+
+function closeModal() { document.getElementById('addModal').classList.add('hidden'); }
+
+function selectStatus(el, val) {
+  selectedStatus = val;
+  document.querySelectorAll('.status-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ===== SUBMIT (append to sheet via Google Apps Script or direct API) =====
+async function submitForm() {
+  const name = document.getElementById('f_name').value.trim();
+  if (!name) { alert('กรุณาใส่ชื่อลูกค้า'); return; }
+
+  const rowData = [
+    document.getElementById('f_date').value,
+    name,
+    document.getElementById('f_phone').value,
+    document.getElementById('f_type').value,
+    document.getElementById('f_detail').value,
+    document.getElementById('f_price').value,
+    document.getElementById('f_deposit').value,
+    selectedStatus,
+    document.getElementById('f_note').value
+  ];
+
+  if (editingRow) {
+    // Update existing row
+    const range = `${SHEET_NAME}!A${editingRow}:I${editingRow}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED&key=${API_KEY}`;
+    alert('⚠️ การแก้ไขต้องใช้ OAuth (ไม่ใช่แค่ API Key)\nดูวิธีตั้งค่า Google Apps Script ในขั้นตอนถัดไป');
+  } else {
+    alert('⚠️ การเพิ่มข้อมูลต้องใช้ Google Apps Script\nดูวิธีตั้งค่าในขั้นตอนถัดไป\n\nข้อมูลที่จะบันทึก:\n' + rowData.join(' | '));
+  }
+  closeModal();
+}
+
+async function deleteFromDetail() {
+  if (!confirm(`ลบรายการของ "${detailData.name}" ใช่ไหม?`)) return;
+  alert('⚠️ การลบต้องใช้ Google Apps Script\nดูวิธีตั้งค่าในขั้นตอนถัดไป');
+  closeDetailModal();
+}
+</script>
+</body>
+</html>
